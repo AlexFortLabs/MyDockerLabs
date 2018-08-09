@@ -1,0 +1,9 @@
+Racktable
+Version: 0.20.10
+
+$ docker run -i -t -d -p 9090:80 ryoogata/racktables
+
+http://localhost:9090/racktables
+
+username: admin
+password: racktables
