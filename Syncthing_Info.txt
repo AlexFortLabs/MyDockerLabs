@@ -1,0 +1,61 @@
+
+$ docker pull syncthing/syncthing
+
+# /var/syncthing/config   - the configuration and index directory into the Container
+# /var/syncthing          - the default sync folder into the Container
+
+$ docker run -p 8384:8384 -p 22000:22000 \
+    -v /home/p0537/docker/syncthing/st-cfg:/var/syncthing/config \
+    -v /home/p0537/docker/syncthing/st-sync:/var/syncthing \
+    syncthing/syncthing:latest
+	
+#######
+docker run -d --name="Syncthing" \
+      --net="bridge" \
+      -p 8080:8080/tcp \
+      -p 22000:22000/tcp \
+      -p 21025:21025/udp \
+      -v "/mnt/user/appdata/syncthing":"/config":rw 
+      -v "/path/to/syncfolders":"/mnt/media":rw 
+       gfjardim/syncthing
+#######
+	
+	
+# Dockerfile
+
+FROM alpine
+
+RUN echo 'syncthing:x:1000:1000::/var/syncthing:/sbin/nologin' >> /etc/passwd \
+    && echo 'syncthing:!::0:::::' >> /etc/shadow \
+    && mkdir /var/syncthing \
+    && chown syncthing /var/syncthing
+
+ENV release=
+
+RUN apk add --no-cache --virtual .deps \
+         curl \
+         gnupg \
+         jq \
+    && apk add --no-cache \
+         ca-certificates \
+    && gpg --keyserver keyserver.ubuntu.com --recv-key D26E6ED000654A3E \
+    && set -x \
+    && mkdir /syncthing \
+    && cd /syncthing \
+    && release=${release:-$(curl -s https://api.github.com/repos/syncthing/syncthing/releases/latest | jq -r .tag_name )} \
+    && curl -sLO https://github.com/syncthing/syncthing/releases/download/${release}/syncthing-linux-amd64-${release}.tar.gz \
+    && curl -sLO https://github.com/syncthing/syncthing/releases/download/${release}/sha256sum.txt.asc \
+    && gpg --verify sha256sum.txt.asc \
+    && grep syncthing-linux-amd64 sha256sum.txt.asc | sha256sum \
+    && tar -zxf syncthing-linux-amd64-${release}.tar.gz \
+    && mv syncthing-linux-amd64-${release}/syncthing . \
+    && rm -rf syncthing-linux-amd64-${release} sha256sum.txt.asc syncthing-linux-amd64-${release}.tar.gz \
+    && apk del .deps
+
+USER syncthing
+ENV STNOUPGRADE=1
+
+HEALTHCHECK --interval=1m --timeout=10s \
+  CMD nc -z localhost 22000 || exit 1
+
+ENTRYPOINT ["/syncthing/syncthing", "-home", "/var/syncthing/config", "-gui-address", "0.0.0.0:8384"]

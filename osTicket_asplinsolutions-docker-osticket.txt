@@ -1,0 +1,31 @@
+
+
+docker run --name osticket_mysql -d -e MYSQL_ROOT_PASSWORD=secret -e MYSQL_USER=osticket -e MYSQL_PASSWORD=secret -e MYSQL_DATABASE=osticket mysql:5
+
+docker run --name osticket -d --link osticket_mysql:mysql -p 8080:80 campbellsoftwaresolutions/osticket
+
+http://localhost:8080/scp/. Login with default admin user & password:
+
+username: ostadmin
+password: Admin1
+
+
+If you want to change the environmental database variables on the OSTicket image to run, you can do it as follows.
+
+docker run --name osticket -d MYSQL_ROOT_PASSWORD=new_root_password -e MYSQL_USER=new_root_user -e MYSQL_PASSWORD=new_secret -e MYSQL_DATABASE=osticket --link osticket_mysql:mysql -p 8080:80 campbellsoftwaresolutions/osticket
+
+
+Backup:
+
+docker exec osticket_mysql /usr/bin/mysqldump -u root --password="secret" -r osticket > /home/p0537/docker/osticket/backup.sql
+
+OK# docker exec osticket_mysql sh -c 'exec mysqldump --all-databases -uroot -p"secret"' > /home/p0537/docker/osticket/all-databases.sql
+
+NO# docker exec $(docker ps | awk '{print $NF}' | grep -w osticket) mysqldump osticket -uroot -p"secret" > osticket_mysql.$(date +"%Y%m%d_%H%M%S").sql
+OK#  docker exec osticket_mysql mysqldump osticket -uroot -p"secret" > osticket_mysql.$(date +"%Y%m%d_%H%M%S").sql
+CRON-JOB dazu:
+0 0 * * * docker exec osticket_mysql mysqldump osticket -uroot -p"secret" > /home/p0537/docker/osticket/osticket_mysql.$(date +"%Y%m%d_%H%M%S").sql
+
+Restore:  (Parameter sind:  archiv.sql | CONTAINER=osticket_mysql DBank=osticket)
+OK# cat osticket_mysql.20190208_104149.sql | docker exec -i osticket_mysql /usr/bin/mysql -u root -p"secret" osticket
+ 
